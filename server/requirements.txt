@@ -1,0 +1,7 @@
+# 运行时依赖
+fastapi>=0.110
+uvicorn[standard]>=0.27
+
+# 说明：
+# - 数据库用 Python 标准库 sqlite3，不需要额外驱动
+# - pydantic 随 fastapi 一起安装，用来做请求体校验

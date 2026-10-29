@@ -1,0 +1,102 @@
+专专后端 · 接口自测报告
+========================================================================
+
+■ 1. 认证
+  OK   POST /auth/login 奶蛙登录  → HTTP 200
+  OK   登录返回 user.name  → 奶蛙
+  OK   POST /auth/login 陈默登录
+  OK   GET /auth/me  → 南苑 3 栋
+  OK   无 token → 40100  → HTTP 401 code 40100
+  OK   伪造 token → 40101  → code 40101
+
+■ 2. 市场列表与近似搜索
+  OK   GET /items 同款聚合  → 21 个同款组 / 共 21 组
+  OK   列表不含自己的挂单
+  OK   iPhone 13 同款聚合 2 个卖家、最低 2199  → minPrice=2199 sellerCount=2
+  OK   拼写错误 macbok → MacBook（近似）  → ['MacBook Air M1 8+256 银色']
+  OK   match=exact 时 macbok 无结果  → total=0
+  OK   同义词 单车 → 公路自行车  → ['公路自行车 700C 黑色', '公路自行车 700C 蓝色']
+  OK   同义词 平果手机 → iPhone  → ['iPhone 13 128G 蓝色', 'iPhone 13 128G 星光色']
+  OK   分类+捐赠筛选  → 1 条
+  OK   价格升序  → [0, 0, 10, 15, 15]…
+  OK   分页 hasMore  → total=24 hasMore=True
+
+■ 3. 挂单详情
+  OK   GET /items/i2  → iPhone 13 128G 星光色
+  OK   含卖家信息卡  → 信用极好 / 在售 2
+  OK   含同款其他卖家  → ['何嘉', '奶蛙']
+  OK   含评价数与评论数  → review=0 comment=1
+  OK   不存在的挂单 → 40400  → code 40400
+
+■ 4. 发布 / 编辑 / 上下架
+  OK   POST /items 发布出售  → i42 productId=p_69d6c3ab
+  OK   未传 productId 时自动建同款
+  OK   PATCH /items/{id} 改价  → price=99
+  OK   改别人的挂单 → 40300  → code 40300
+  OK   只改 mode 不传价格 → 40002  → 改为捐赠时价格必须为 0 或省略
+  OK   mode=donate + price=0 通过  → price=0
+  OK   0 元改回出售 → 40002  → 出售商品的价格必须大于 0
+  OK   改回出售并重新定价  → sale/88
+  OK   出售价 0 → 40002  → 出售商品的 price 必须大于 0；捐赠请设置 mode=donate
+  OK   下架  → off_shelf
+  OK   重新上架  → on_sale
+  OK   下架别人的挂单 → 40300
+  OK   GET /items/mine  → 10 件
+
+■ 5. 评论与卖家回复
+  OK   GET 评论列表  → total=1
+  OK   一级评论内嵌卖家回复
+  OK   发一级评论  → c39da3bd2
+  OK   空内容 → 40002  → 评论内容需为 1–200 字
+  OK   非卖家回复 → 40301  → 只有该挂单的卖家可以回复评论
+  OK   卖家回复成功
+  OK   重复回复 → 40902  → 该评论已有一条卖家回复，不能重复回复
+  OK   三级评论 → 40902  → 评论最多两层，不能回复一条回复
+  OK   删别人的评论 → 40301
+  OK   删自己的评论（级联删回复）
+
+■ 6. 下单与状态机（核心事务）
+  OK   POST /orders 下单  → ZZ20261029001
+  OK   订单存商品快照  → iPhone 13 128G 星光色
+  OK   挂单被锁定为 reserved  → reserved
+  OK   抢已被预订的挂单 → 40901  → 挂单当前状态为 reserved，不可下单
+  OK   买自己的东西 → 40300  → 不能对自己的挂单下单
+  OK   捐赠选快递 → 40903  → 捐赠商品只能选择自提
+  OK   GET /orders?role=buyer  → 7 笔
+  OK   GET /orders?role=seller  → 6 笔
+  OK   非交易双方查订单 → 40300
+  OK   买家确认 → 40300  → 只有卖家可以确认交易
+  OK   卖家确认 pending→trading
+  OK   重复确认 → 40900  → 订单当前状态为 trading，只有待确认的订单可以确认
+  OK   完成 trading→completed
+  OK   挂单变为 sold  → sold
+
+■ 7. 评价
+  OK   POST 评价  → 5 星 ['描述相符', '沟通顺畅']
+  OK   重复评价 → 40900  → 该订单已评价过，不能重复评价
+  OK   卖家评价 → 40300
+  OK   GET 商品评价  → total=1
+
+■ 8. 取消与放货
+  OK   买家取消 pending→cancelled
+  OK   挂单回到 on_sale  → on_sale
+
+■ 9. 卖家主页与统计
+  OK   GET /sellers/me/profile  → 在售5 已售3 捐出1
+  OK   好评率与平均星级  → avgStars=4.75 positiveRate=100.0 reviewCount=4
+  OK   评价标签计数  → [{'name': '沟通顺畅', 'count': 3}, {'name': '成色很好', 'count': 2}, {'name': '描述相符', 'count': 2}]
+  OK   GET /sellers/{id}/items  → 1 件在售
+  OK   GET /sellers/{id}/sold（含捐赠）  → total=4，含 donate=True
+  OK   GET /sellers/{id}/reviews  → stats={'reviewCount': 4, 'avgStars': 4.75, 'positiveRate': 100.0} tags=3
+  OK   GET /seller/stats 工作台  → 在售5 待处理1 成交额4958 捐出1
+
+■ 10. 元数据与前端快照
+  OK   GET /categories  → ['数码', '家电', '家具', '图书', '服饰', '运动', '其他']
+  OK   GET /products/{id} 同款全部卖家  → ['何嘉', '奶蛙', '陈默']
+  OK   GET /bootstrap 全量快照  → items=42 orders=13 comments=16
+
+========================================================================
+用例合计 74 条：通过 74，失败 0
+测试过程中产生的数据已回滚（数据库重建为种子状态）
+
+数据库已重置为种子状态，可以打开 /docs 继续手动试。

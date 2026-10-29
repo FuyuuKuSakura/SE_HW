@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+zzj.db
+zzj.db-wal
+zzj.db-shm
+*.log
+run_test.txt
+run_seed.txt
+run_test_exit.txt
